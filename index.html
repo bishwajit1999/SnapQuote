@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuoteSage - Daily Quote Generator</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      transition: background 0.3s, color 0.3s;
+      background: #f0f0f0;
+      color: #222;
+    }
+    .container {
+      max-width: 600px;
+      margin: 60px auto;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+      text-align: center;
+      background-color: white;
+    }
+    .quote {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      font-style: italic;
+    }
+    .author {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.3s;
+    }
+    .like-btn.liked {
+      color: red;
+    }
+    select {
+      padding: 5px;
+      margin-top: 10px;
+    }
+    .controls {
+      margin-top: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function QuoteCard({ quote, author, fontSize, theme, liked, onLike }) {
+      const themeStyles = {
+        background: theme === 'dark' ? '#333' : '#fff',
+        color: theme === 'dark' ? '#fff' : '#222',
+        transition: 'all 0.3s ease'
+      };
+
+      return (
+        <div className="container" id="quote-box" style={themeStyles}>
+          <div className="quote" style={{ fontSize: fontSize + 'px' }}>
+            “{quote}”
+          </div>
+          <div className="author">— {author || 'Unknown'}</div>
+          <div className="buttons">
+            <button onClick={onLike} className={liked ? 'like-btn liked' : 'like-btn'}>
+              {liked ? '❤️ Liked' : '🤍 Like'}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function QuoteButton({ onClick, label }) {
+      return <button onClick={onClick}>{label}</button>;
+    }
+
+    function ThemeToggle({ onToggle }) {
+      return <button onClick={onToggle}>🌗 Toggle Theme</button>;
+    }
+
+    function App() {
+      const [quoteData, setQuoteData] = useState({ content: 'Loading...', author: '' });
+      const [liked, setLiked] = useState(false);
+      const [theme, setTheme] = useState('light');
+      const [fontSize, setFontSize] = useState(20);
+
+      const fetchQuote = async () => {
+        try {
+          const res = await axios.get('https://zenquotes.io/api/random');
+          const { q, a } = res.data[0];
+          setQuoteData({ content: q, author: a });
+          setLiked(false);
+        } catch (error) {
+          setQuoteData({ content: 'Failed to fetch quote.', author: 'Try again later.' });
+        }
+      };
+
+      useEffect(() => {
+        fetchQuote();
+      }, []);
+
+      useEffect(() => {
+        document.body.style.background = theme === 'dark' ? '#333' : '#f0f0f0';
+        document.body.style.color = theme === 'dark' ? '#fff' : '#222';
+      }, [theme]);
+
+      const handleLike = () => setLiked(!liked);
+      const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+
+      const copyToClipboard = () => {
+        const text = `"${quoteData.content}" — ${quoteData.author}`;
+        navigator.clipboard.writeText(text).then(() => {
+          alert("Quote copied to clipboard!");
+        });
+      };
+
+      const downloadImage = () => {
+        const element = document.getElementById("quote-box");
+        html2canvas(element).then(canvas => {
+          const link = document.createElement("a");
+          link.download = "quote.png";
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+        });
+      };
+
+      return (
+        <div>
+          <QuoteCard
+            quote={quoteData.content}
+            author={quoteData.author}
+            fontSize={fontSize}
+            theme={theme}
+            liked={liked}
+            onLike={handleLike}
+          />
+          <div className="controls">
+            <div className="buttons">
+              <QuoteButton onClick={fetchQuote} label="🔁 New Quote" />
+              <ThemeToggle onToggle={toggleTheme} />
+              <button onClick={copyToClipboard}>📋 Copy to Clipboard</button>
+              <button onClick={downloadImage}>⬇️ Download as Image</button>
+            </div>
+            <div style={{ marginTop: '10px' }}>
+              <label style={{ marginRight: '10px' }}>Font Size: </label>
+              <select onChange={(e) => setFontSize(parseInt(e.target.value))} value={fontSize}>
+                <option value={16}>Small</option>
+                <option value={20}>Medium</option>
+                <option value={24}>Large</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
